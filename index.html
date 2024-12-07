@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Price History Checker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px;
+            width: 80%;
+            max-width: 400px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            text-align: left;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Crypto Price History Checker</h1>
+        <form id="cryptoForm">
+            <input type="text" id="cryptoId" placeholder="Enter Crypto ID (or 'all' for all IDs)">
+            <input type="text" id="date" placeholder="Enter Date (DD-MM-YYYY)">
+            <button type="submit">Check Prices</button>
+        </form>
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('cryptoForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const cryptoId = document.getElementById('cryptoId').value.trim();
+            const date = document.getElementById('date').value.trim();
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Fetching data...';
+
+            try {
+                let idList = [];
+
+                if (cryptoId.toLowerCase() === 'all') {
+                    const allIdsResponse = await fetch('https://api.coingecko.com/api/v3/coins/list');
+                    const allIdsData = await allIdsResponse.json();
+                    idList = allIdsData.map(coin => coin.id);
+                } else {
+                    idList = [cryptoId];
+                }
+
+                let results = '';
+
+                for (const id of idList) {
+                    try {
+                        const historyResponse = await fetch(`https://api.coingecko.com/api/v3/coins/${id}/history?date=${date}&localization=true`);
+                        const historyData = await historyResponse.json();
+
+                        const currentResponse = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`);
+                        const currentData = await currentResponse.json();
+
+                        if (historyData.market_data && currentData[id]) {
+                            const datePrice = historyData.market_data.current_price.usd;
+                            const currentPrice = currentData[id].usd;
+                            const increasePercentage = ((currentPrice - datePrice) / datePrice * 100).toFixed(2);
+
+                            results += `${id}: (${date}) $${datePrice} to (Today) $${currentPrice}. That's an increase by ${increasePercentage}%\n`;
+                        } else {
+                            results += `${id}: Data not found for the specified date.\n`;
+                        }
+                    } catch (error) {
+                        results += `${id}: Error fetching data.\n`;
+                    }
+                }
+
+                resultDiv.textContent = results || 'No data found.';
+            } catch (error) {
+                resultDiv.textContent = 'An error occurred while fetching the data.';
+            }
+        });
+    </script>
+</body>
+</html>
