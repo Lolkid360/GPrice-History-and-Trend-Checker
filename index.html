@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Price History Checker</title>
+    <title>Crypto Price History and Trend Checker</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,46 +11,82 @@
             text-align: center;
             padding: 20px;
         }
+
         .container {
             background-color: white;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
             display: inline-block;
+            max-width: 500px;
+            width: 100%;
         }
+
         input, button {
             padding: 10px;
             margin: 10px;
             width: 80%;
             max-width: 400px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
         }
+
         button {
             background-color: #007BFF;
             color: white;
             border: none;
             cursor: pointer;
+            transition: background-color 0.3s;
         }
+
         button:hover {
             background-color: #0056b3;
         }
-        .result {
+
+        .result-container {
             margin-top: 20px;
-            white-space: pre-wrap;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .result-card {
+            background-color: #ffffff;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
             text-align: left;
-            max-width: 600px;
-            margin: 20px auto;
+            transition: transform 0.3s;
+        }
+
+        .result-card:hover {
+            transform: scale(1.05);
+        }
+
+        .result-card h2 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #007BFF;
+        }
+
+        .result-card p {
+            margin: 10px 0 0;
+            color: #555;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Crypto Price History Checker</h1>
+        <h1>Crypto Price History and Trend Checker</h1>
         <form id="cryptoForm">
             <input type="text" id="cryptoId" placeholder="Enter Crypto ID (or 'all' for all IDs)">
             <input type="text" id="date" placeholder="Enter Date (DD-MM-YYYY)">
             <button type="submit">Check Prices</button>
         </form>
-        <div class="result" id="result"></div>
+        <div class="result-container" id="result"></div>
     </div>
 
     <script>
@@ -60,7 +96,7 @@
             const cryptoId = document.getElementById('cryptoId').value.trim();
             const date = document.getElementById('date').value.trim();
             const resultDiv = document.getElementById('result');
-            resultDiv.textContent = 'Fetching data...';
+            resultDiv.innerHTML = '<p>Fetching data...</p>';
 
             try {
                 let idList = [];
@@ -88,18 +124,35 @@
                             const currentPrice = currentData[id].usd;
                             const increasePercentage = ((currentPrice - datePrice) / datePrice * 100).toFixed(2);
 
-                            results += `${id}: (${date}) $${datePrice} to (Today) $${currentPrice}. That's an increase by ${increasePercentage}%\n`;
+                            results += `
+                                <div class="result-card">
+                                    <h2>${id}</h2>
+                                    <p><strong>Date (${date}):</strong> $${datePrice}</p>
+                                    <p><strong>Today:</strong> $${currentPrice}</p>
+                                    <p><strong>Change:</strong> ${increasePercentage}%</p>
+                                </div>
+                            `;
                         } else {
-                            results += `${id}: Data not found for the specified date.\n`;
+                            results += `
+                                <div class="result-card">
+                                    <h2>${id}</h2>
+                                    <p>Data not found for the specified date.</p>
+                                </div>
+                            `;
                         }
                     } catch (error) {
-                        results += `${id}: Error fetching data.\n`;
+                        results += `
+                            <div class="result-card">
+                                <h2>${id}</h2>
+                                <p>Error fetching data.</p>
+                            </div>
+                        `;
                     }
                 }
 
-                resultDiv.textContent = results || 'No data found.';
+                resultDiv.innerHTML = results || '<p>No data found.</p>';
             } catch (error) {
-                resultDiv.textContent = 'An error occurred while fetching the data.';
+                resultDiv.innerHTML = '<p>An error occurred while fetching the data.</p>';
             }
         });
     </script>
