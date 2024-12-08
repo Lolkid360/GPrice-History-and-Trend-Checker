@@ -35,6 +35,13 @@
             text-transform: uppercase;
         }
 
+        .date-label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #333;
+        }
+
         button {
             background-color: #007BFF;
             color: white;
@@ -82,8 +89,8 @@
         }
 
         .crypto-link {
-            display: block;
-            margin-top: 10px;
+            display: inline-block;
+            margin: -5px 0 10px;
             font-size: 0.9em;
             color: #007BFF;
             text-decoration: none;
@@ -92,32 +99,78 @@
         .crypto-link:hover {
             text-decoration: underline;
         }
+
+        .error-message {
+            color: red;
+            margin-top: 10px;
+        }
+
+        .crypto-input-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Crypto Price History and Trend Checker</h1>
         <form id="cryptoForm">
-            <input type="text" id="cryptoId" placeholder="Enter Crypto IDs (comma-separated, e.g. bitcoin,ethereum)" required>
-            <a href="https://www.coingecko.com/en/coins" target="_blank" class="crypto-link">Find Valid Crypto IDs</a>
-            <input type="date" id="date" required>
+            <div class="crypto-input-container">
+                <input type="text" id="cryptoId" placeholder="Enter Crypto IDs (comma-separated, e.g. bitcoin,ethereum)" required>
+                <a href="https://www.coingecko.com/en/coins" target="_blank" class="crypto-link">Find Valid Crypto IDs</a>
+            </div>
+            
+            <label class="date-label">From Date:</label>
+            <input type="date" id="fromDate" required>
+            
+            <label class="date-label">To Date:</label>
+            <input type="date" id="toDate" required>
+            
+            <div id="dateError" class="error-message"></div>
+            
             <button type="submit">Check Prices</button>
         </form>
         <div class="result-container" id="result"></div>
     </div>
 
     <script>
-        // Set max date to today to prevent future dates
+        // Set max and min dates
         const today = new Date().toISOString().split('T')[0];
-        document.getElementById('date').setAttribute('max', today);
+        const fromDateInput = document.getElementById('fromDate');
+        const toDateInput = document.getElementById('toDate');
+        
+        // Set max date to today
+        fromDateInput.setAttribute('max', today);
+        toDateInput.setAttribute('max', today);
+
+        // Ensure 'to' date is never before 'from' date
+        fromDateInput.addEventListener('change', function() {
+            toDateInput.setAttribute('min', this.value);
+        });
 
         document.getElementById('cryptoForm').addEventListener('submit', async function(event) {
             event.preventDefault();
+            
+            // Clear previous error
+            const dateErrorDiv = document.getElementById('dateError');
+            dateErrorDiv.textContent = '';
 
             const cryptoInput = document.getElementById('cryptoId').value.trim();
-            const dateInput = document.getElementById('date').value;
-            // Convert date to DD-MM-YYYY format for API
-            const date = dateInput.split('-').reverse().join('-');
+            const fromDateInput = document.getElementById('fromDate').value;
+            const toDateInput = document.getElementById('toDate').value;
+            
+            // Validate dates
+            if (new Date(fromDateInput) > new Date(toDateInput)) {
+                dateErrorDiv.textContent = 'From date must be before or equal to To date';
+                return;
+            }
+
+            // Convert dates to DD-MM-YYYY format for API
+            const fromDate = fromDateInput.split('-').reverse().join('-');
+            const toDate = toDateInput.split('-').reverse().join('-');
+            
             const resultDiv = document.getElementById('result');
             resultDiv.innerHTML = '<p>Fetching data...</p>';
 
@@ -137,22 +190,24 @@
 
                 for (const id of idList) {
                     try {
-                        const historyResponse = await fetch(`https://api.coingecko.com/api/v3/coins/${id}/history?date=${date}&localization=true`);
-                        const historyData = await historyResponse.json();
+                        // Fetch history for from date
+                        const fromHistoryResponse = await fetch(`https://api.coingecko.com/api/v3/coins/${id}/history?date=${fromDate}&localization=true`);
+                        const fromHistoryData = await fromHistoryResponse.json();
 
-                        const currentResponse = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`);
-                        const currentData = await currentResponse.json();
+                        // Fetch history for to date
+                        const toHistoryResponse = await fetch(`https://api.coingecko.com/api/v3/coins/${id}/history?date=${toDate}&localization=true`);
+                        const toHistoryData = await toHistoryResponse.json();
 
-                        if (historyData.market_data && currentData[id]) {
-                            const datePrice = historyData.market_data.current_price.usd;
-                            const currentPrice = currentData[id].usd;
-                            const increasePercentage = ((currentPrice - datePrice) / datePrice * 100).toFixed(2);
+                        if (fromHistoryData.market_data && toHistoryData.market_data) {
+                            const fromPrice = fromHistoryData.market_data.current_price.usd;
+                            const toPrice = toHistoryData.market_data.current_price.usd;
+                            const increasePercentage = ((toPrice - fromPrice) / fromPrice * 100).toFixed(2);
 
                             results += `
                                 <div class="result-card">
                                     <h2>${id}</h2>
-                                    <p><strong>Date (${date}):</strong> $${datePrice}</p>
-                                    <p><strong>Today:</strong> $${currentPrice}</p>
+                                    <p><strong>From (${fromDate}):</strong> $${fromPrice}</p>
+                                    <p><strong>To (${toDate}):</strong> $${toPrice}</p>
                                     <p><strong>Change:</strong> ${increasePercentage}%</p>
                                 </div>
                             `;
@@ -160,7 +215,7 @@
                             results += `
                                 <div class="result-card">
                                     <h2>${id}</h2>
-                                    <p>Data not found for the specified date.</p>
+                                    <p>Data not found for the specified dates.</p>
                                 </div>
                             `;
                         }
