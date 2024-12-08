@@ -31,6 +31,10 @@
             border-radius: 5px;
         }
 
+        input[type="date"] {
+            text-transform: uppercase;
+        }
+
         button {
             background-color: #007BFF;
             color: white;
@@ -76,37 +80,57 @@
             margin: 10px 0 0;
             color: #555;
         }
+
+        .crypto-link {
+            display: block;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #007BFF;
+            text-decoration: none;
+        }
+
+        .crypto-link:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Crypto Price History and Trend Checker</h1>
         <form id="cryptoForm">
-            <input type="text" id="cryptoId" placeholder="Enter Crypto ID (or 'all' for all IDs)">
-            <input type="text" id="date" placeholder="Enter Date (DD-MM-YYYY)">
+            <input type="text" id="cryptoId" placeholder="Enter Crypto IDs (comma-separated, e.g. bitcoin,ethereum)" required>
+            <a href="https://www.coingecko.com/en/coins" target="_blank" class="crypto-link">Find Valid Crypto IDs</a>
+            <input type="date" id="date" required>
             <button type="submit">Check Prices</button>
         </form>
         <div class="result-container" id="result"></div>
     </div>
 
     <script>
+        // Set max date to today to prevent future dates
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('date').setAttribute('max', today);
+
         document.getElementById('cryptoForm').addEventListener('submit', async function(event) {
             event.preventDefault();
 
-            const cryptoId = document.getElementById('cryptoId').value.trim();
-            const date = document.getElementById('date').value.trim();
+            const cryptoInput = document.getElementById('cryptoId').value.trim();
+            const dateInput = document.getElementById('date').value;
+            // Convert date to DD-MM-YYYY format for API
+            const date = dateInput.split('-').reverse().join('-');
             const resultDiv = document.getElementById('result');
             resultDiv.innerHTML = '<p>Fetching data...</p>';
 
             try {
                 let idList = [];
 
-                if (cryptoId.toLowerCase() === 'all') {
+                if (cryptoInput.toLowerCase() === 'all') {
                     const allIdsResponse = await fetch('https://api.coingecko.com/api/v3/coins/list');
                     const allIdsData = await allIdsResponse.json();
                     idList = allIdsData.map(coin => coin.id);
                 } else {
-                    idList = [cryptoId];
+                    // Split input by comma and trim whitespace
+                    idList = cryptoInput.split(',').map(id => id.trim().toLowerCase());
                 }
 
                 let results = '';
